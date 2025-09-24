@@ -1,4 +1,0 @@
-pandas
-transformers
-numpy
-indic-nlp-library
