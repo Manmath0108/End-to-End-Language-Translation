@@ -3,208 +3,85 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg?logo=docker)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Powered-009688.svg?logo=fastapi)
+![PyTorch](https://img.shields.io/badge/PyTorch-Powered-EE4C2C.svg?logo=pytorch)
+![Python](https://img.shields.io/badge/Python-3.9+-3776AB.svg?logo=python)
 
-A production-oriented deep learning framework for translating text between languages. This repository implements a Seq2Seq Encoder-Decoder architecture using LSTM building blocks, served via a high-performance FastAPI interface with full containerization support.
-
----
-
-# Overview
-
-This system is designed to handle sequence-to-sequence translation tasks. Unlike naive implementations, this project separates the three core concerns of ML engineering:
-
-1. **Model Architecture**
-   - Specialized LSTM units for capturing long-range dependencies in source and target languages.
-
-2. **Inference Engine**
-   - Optimized auto-regressive decoding with vocabulary mapping and state management.
-
-3. **Application Layer**
-   - A production-grade API layer that handles request validation, asynchronous I/O, and multi-threaded serving.
+A production-oriented deep learning system for English → Hindi sequence-to-sequence translation. Built from scratch using a custom LSTM Encoder-Decoder architecture in PyTorch, served via a FastAPI inference engine, and fully containerized with Docker — with GPU runtime support.
 
 ---
 
-# Technical Architecture
+## What This Project Demonstrates
 
-The system follows a Seq2Seq (Sequence-to-Sequence) design.
+Most translation projects fine-tune a pretrained model and wrap it in Flask. This one doesn't.
 
-## The Encoder
+Every layer here is hand-built:
+- A **custom LSTM encoder** that maps padded token batches into context states
+- A **custom auto-regressive decoder** that generates Hindi tokens step-by-step until `<EOS>`
+- A **production FastAPI serving layer** with Pydantic v2 validation and async I/O
+- A **Dockerized deployment** supporting both CPU and CUDA GPU runtimes
 
-- **Embedding Layer**
-  - Maps source tokens to a high-dimensional latent space.
-
-- **LSTM Core**
-  - Processes padded mini-batches of embeddings to produce hidden states and cell states.
-
-- **Output**
-  - Provides the context required by the decoder for every time step.
+The goal was to understand what happens inside a translation model — not just call one.
 
 ---
 
-## The Decoder
+## Architecture
 
-- **Auto-regressive Generation**
-  - Generates tokens one-by-one until the `<EOS>` token is produced.
+```
+Input (English Text)
+        │
+        ▼
+[ T5-base Tokenizer ]        ← Subword tokenization via Hugging Face
+        │
+        ▼
+[ Encoder: Embedding → LSTM ]   ← Produces hidden state + cell state
+        │
+        ▼
+[ Decoder: LSTM → Linear Head ] ← Auto-regressive generation, step-by-step
+        │
+        ▼
+Output (Hindi Translation)
+```
 
-- **Context Awareness**
-  - At each step, the decoder consumes the encoder's final hidden state and the previous step's cell state.
+### Encoder
+- **Embedding layer** maps source tokens to a high-dimensional latent space
+- **LSTM core** processes padded mini-batches and produces hidden + cell states passed to the decoder at every timestep
 
-- **Prediction Head**
-  - A Linear projection layer maps LSTM outputs back to the target vocabulary (Hindi).
+### Decoder
+- Consumes encoder's final hidden state as initial context
+- Generates target tokens one at a time (**auto-regressive**) until `<EOS>` is produced
+- **Linear projection head** maps LSTM outputs to the Hindi target vocabulary
 
 ---
 
-# Tech Stack
+## Tech Stack
 
-### Deep Learning
-- PyTorch
-- LSTM Architecture
-- CUDA Acceleration
-- Tensor Management
-
-### NLP
-- Hugging Face Transformers
-- T5-base Tokenizer
-
-### API Layer
-- FastAPI
-- Pydantic v2
-- JSON Serialization
-- Schema Validation
-
-### Deployment
-- Docker
-- Uvicorn
+| Layer | Technology |
+|---|---|
+| Deep Learning | PyTorch, LSTM, CUDA |
+| Tokenization | Hugging Face Transformers, T5-base |
+| API | FastAPI, Pydantic v2, Uvicorn |
+| Deployment | Docker (CPU + GPU), Uvicorn |
 
 ---
 
-# Getting Started
+## Project Structure
 
-## Prerequisites
-
-- Python 3.9+
-- CUDA Drivers (Optional, for GPU acceleration)
-- Docker Engine
-
----
-
-## Installation & Setup
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/Manmath0108/End-to-End-Language-Translation.git
-cd End-to-End-Language-Translation
 ```
-
-### 2. Create Virtual Environment
-
-```bash
-python -m venv venv
-
-# Linux / macOS
-source venv/bin/activate
-
-# Windows
-venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-# Running the System
-
-You can run the project in two modes:
-
-## Mode A: Development (Local CLI)
-
-Run the FastAPI server directly:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-Access the API documentation:
-
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
----
-
-## Mode B: Production (Dockerized)
-
-### Build the Docker Image
-
-```bash
-docker build -t language-translation .
-```
-
-### Run the Container
-
-#### CPU
-
-```bash
-docker run -p 8000:8000 language-translation
-```
-
-#### GPU
-
-```bash
-docker run --runtime nvidia --gpus all -p 8000:8000 language-translation
-```
-
----
-
-# API Specification
-
-## Endpoint
-
-```http
-POST /translate
-```
-
-Accepts a `TranslateRequest` object and returns the Hindi translation.
-
-### Request Body
-
-```json
-{
-  "text": "Hello, how are you?"
-}
-```
-
-### Response
-
-```json
-{
-  "hindi_translation": "नमस्ते, आप कैसे हैं?"
-}
-```
-
----
-
-# Project Structure
-
-```text
 End-to-End-Language-Translation/
 │
 ├── app/
-│   ├── main.py
-│   ├── routes.py
-│   ├── schemas.py
-│   └── inference.py
+│   ├── main.py          # FastAPI app entrypoint
+│   ├── routes.py        # /translate endpoint
+│   ├── schemas.py       # Pydantic v2 request/response models
+│   └── inference.py     # Model loading + decoding logic
 │
 ├── src/
-│   ├── encoder.py
-│   ├── decoder.py
-│   ├── seq2seq.py
-│   └── tokenizer.py
+│   ├── encoder.py       # LSTM Encoder
+│   ├── decoder.py       # Auto-regressive LSTM Decoder
+│   ├── seq2seq.py       # Seq2Seq wrapper
+│   └── tokenizer.py     # T5-base tokenizer integration
 │
-├── notebooks/
+├── notebooks/           # Training + experimentation
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
@@ -213,21 +90,93 @@ End-to-End-Language-Translation/
 
 ---
 
-# License
+## API Reference
 
-This project is distributed under the **MIT License**.
+### `POST /translate`
 
-See the [LICENSE](LICENSE) file for details.
+Accepts English text, returns Hindi translation.
+
+**Request**
+```json
+{
+  "text": "Hello, how are you?"
+}
+```
+
+**Response**
+```json
+{
+  "hindi_translation": "नमस्ते, आप कैसे हैं?"
+}
+```
+
+Interactive docs available at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
 ---
 
-# Author
+## Getting Started
+
+### Prerequisites
+- Python 3.9+
+- Docker Engine
+- CUDA Drivers *(optional, for GPU acceleration)*
+
+### Local Development
+
+```bash
+git clone https://github.com/Manmath0108/End-to-End-Language-Translation.git
+cd End-to-End-Language-Translation
+
+python -m venv venv
+source venv/bin/activate       # Windows: venv\Scripts\activate
+
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### Docker (CPU)
+
+```bash
+docker build -t language-translation .
+docker run -p 8000:8000 language-translation
+```
+
+### Docker (GPU)
+
+```bash
+docker run --runtime nvidia --gpus all -p 8000:8000 language-translation
+```
+
+---
+
+## Key Design Decisions
+
+**Why LSTM and not a Transformer?**
+The goal was to learn sequence modeling from first principles — understanding hidden states, cell states, and auto-regressive decoding before abstracting them away. Transformers hide this under attention layers; LSTM makes the information flow explicit.
+
+**Why T5-base tokenizer on an LSTM model?**
+Using a subword tokenizer prevents the OOV (out-of-vocabulary) problem that plagues character or word-level tokenization, without requiring a full Transformer backbone. It's the right tool for the tokenization job independent of the model architecture.
+
+**Why separate `encoder.py`, `decoder.py`, `seq2seq.py`?**
+Mirrors production ML codebases where components are independently testable and swappable. Swapping the decoder from LSTM to a Transformer attention decoder requires touching only one file.
+
+---
+
+## License
+
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+---
+
+## Author
 
 **Manmath Tiwari**
-
 - GitHub: [Manmath0108](https://github.com/Manmath0108)
 - LinkedIn: [manmath-tiwari](https://linkedin.com/in/manmath-tiwari)
+- Medium: [manmathtewaridps](https://medium.com/@manmathtewaridps)
 
 ---
 
-If you found this project useful, consider giving it a star.
+*If this project was useful, consider giving it a star ⭐*
